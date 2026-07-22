@@ -11,7 +11,7 @@ import UploadLogs from "../components/UploadLogs";
 import LogTable from "../components/LogTable";
 import Pagination from "../components/Pagination";
 
-import type { AuditLog, DashboardStats } from "../types/AuditLog";
+import type { DashboardStats } from "../types/AuditLog";
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
@@ -25,7 +25,7 @@ export default function Dashboard() {
     status: "",
     region: "",
   });
-  const [summary, setSummary] = useState("Monitoring secure activity across your environment.");
+  const [summary] = useState("Monitoring secure activity across your environment.");
 
   const queryParams = useMemo(
     () => ({ page, search, sortBy, order, ...filters }),
