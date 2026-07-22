@@ -9,6 +9,14 @@ const auditLogSchema = new mongoose.Schema(
       index: true,
     },
 
+    uniqueKey: {
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+
     role: {
       type: String,
       required: true,

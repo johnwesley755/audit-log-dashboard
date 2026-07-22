@@ -14,32 +14,37 @@ const StatsCards = ({ stats }: Props) => {
     {
       title: "Total Logs",
       value: stats.totalLogs,
-      color: "bg-blue-500",
       icon: <SecurityOutlinedIcon />,
+      accent: "from-blue-600 to-cyan-500",
+      text: "All captured activity",
     },
     {
       title: "High",
       value: stats.high,
-      color: "bg-red-500",
       icon: <ReportProblemOutlinedIcon />,
+      accent: "from-red-500 to-rose-500",
+      text: "Critical severity",
     },
     {
       title: "Medium",
       value: stats.medium,
-      color: "bg-yellow-500",
       icon: <ErrorOutlineOutlinedIcon />,
+      accent: "from-amber-500 to-yellow-400",
+      text: "Needs review",
     },
     {
       title: "Low",
       value: stats.low,
-      color: "bg-green-500",
       icon: <CheckCircleOutlineOutlinedIcon />,
+      accent: "from-emerald-500 to-green-500",
+      text: "Routine activity",
     },
     {
       title: "Unresolved",
       value: stats.unresolved,
-      color: "bg-purple-500",
       icon: <ReportProblemOutlinedIcon />,
+      accent: "from-violet-600 to-purple-500",
+      text: "Open incidents",
     },
   ];
 
@@ -48,16 +53,15 @@ const StatsCards = ({ stats }: Props) => {
       {cards.map((card) => (
         <div
           key={card.title}
-          className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+          className="rounded-[22px] border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm text-slate-500">{card.title}</p>
-
-              <h2 className="mt-2 text-3xl font-bold">{card.value}</h2>
+              <h2 className="mt-2 text-3xl font-semibold text-slate-900">{card.value}</h2>
+              <p className="mt-2 text-xs text-slate-500">{card.text}</p>
             </div>
-
-            <div className={`${card.color} rounded-lg p-3 text-white`}>
+            <div className={`rounded-2xl bg-gradient-to-br ${card.accent} p-3 text-white shadow-lg`}>
               {card.icon}
             </div>
           </div>

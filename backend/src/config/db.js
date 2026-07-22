@@ -1,12 +1,23 @@
+const path = require("path");
+const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 
-const connectDB = async () => {
-    try {
-        await mongoose.connect(process.env.MONGO_URI);
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
-        console.log("MongoDB Connected");
+const connectDB = async () => {
+    const mongoUri = process.env.MONGO_URI;
+
+    if (!mongoUri) {
+        throw new Error("MONGO_URI is not defined in the backend .env file");
+    }
+
+    console.log("MongoDB connection string loaded:", mongoUri.replace(/:[^:@]+@/, ":***@"));
+
+    try {
+        await mongoose.connect(mongoUri);
+        console.log("MongoDB Connected using configured Atlas URI");
     } catch (err) {
-        console.error(err.message);
+        console.error("MongoDB connection failed:", err.message);
         process.exit(1);
     }
 };

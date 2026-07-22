@@ -3,7 +3,9 @@ const express = require("express");
 const {
     uploadLogs,
     getLogs,
-    getStats
+    getStats,
+    deleteLog,
+    deleteAllLogs,
 } = require("../controllers/logController");
 
 const router = express.Router();
@@ -28,5 +30,9 @@ router.get("/stats", getStats);
 |--------------------------------------------------------------------------
 */
 router.get("/", getLogs);
+
+router.delete("/all", deleteAllLogs);
+
+router.delete("/:id", deleteLog);
 
 module.exports = router;

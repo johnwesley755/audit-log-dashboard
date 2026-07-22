@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
 import api from "../api/api";
 
 import Navbar from "../components/Navbar";
@@ -12,125 +14,136 @@ import Pagination from "../components/Pagination";
 import type { AuditLog, DashboardStats } from "../types/AuditLog";
 
 export default function Dashboard() {
-
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-
-  const [stats, setStats] = useState<DashboardStats>({
-    totalLogs: 0,
-    high: 0,
-    medium: 0,
-    low: 0,
-    resolved: 0,
-    unresolved: 0,
-  });
-
-  const [loading, setLoading] = useState(false);
-
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-
   const [page, setPage] = useState(1);
-
-  const [totalPages, setTotalPages] = useState(1);
-
   const [sortBy, setSortBy] = useState("timestamp");
-
   const [order, setOrder] = useState<"asc" | "desc">("desc");
-
   const [filters, setFilters] = useState({
     severity: "",
     role: "",
     status: "",
     region: "",
   });
+  const [summary, setSummary] = useState("Monitoring secure activity across your environment.");
 
-  useEffect(() => {
+  const queryParams = useMemo(
+    () => ({ page, search, sortBy, order, ...filters }),
+    [page, search, sortBy, order, filters]
+  );
 
-    fetchLogs();
+  const {
+    data: logsData,
+    isLoading: loading,
+  } = useQuery({
+    queryKey: ["logs", queryParams],
+    queryFn: async () => {
+      const { data } = await api.get("/logs", { params: queryParams });
+      return data;
+    },
+    staleTime: 30_000,
+  });
 
-  }, [page, search, filters, sortBy, order]);
+  const { data: statsData } = useQuery<DashboardStats>({
+    queryKey: ["stats"],
+    queryFn: async () => {
+      const { data } = await api.get("/logs/stats");
+      return data;
+    },
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
+  const logs = logsData?.logs ?? [];
+  const stats = statsData ?? {
+    totalLogs: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+    resolved: 0,
+    unresolved: 0,
+  };
+  const totalPages = logsData?.totalPages ?? 1;
 
-    fetchStats();
+  const refreshDashboard = () => {
+    void queryClient.invalidateQueries({ queryKey: ["logs"] });
+    void queryClient.invalidateQueries({ queryKey: ["stats"] });
+  };
 
-  }, []);
+  const summaryText = useMemo(() => {
+    if (stats.totalLogs > 0) {
+      const resolutionRate = Math.round((stats.resolved / stats.totalLogs) * 100);
+      return `Resolution rate is ${resolutionRate}% across ${stats.totalLogs} audit entries.`;
+    }
 
-  async function fetchLogs() {
+    return summary;
+  }, [stats, summary]);
 
+  async function handleDeleteOne(id: string) {
     try {
-
-      setLoading(true);
-
-      const { data } = await api.get("/logs", {
-        params: {
-          page,
-          search,
-          sortBy,
-          order,
-          ...filters,
-        },
-      });
-
-      setLogs(data.logs);
-
-      setTotalPages(data.totalPages);
-
-    } finally {
-
-      setLoading(false);
-
+      await api.delete(`/logs/${id}`);
+      toast.success("Log deleted successfully");
+      refreshDashboard();
+    } catch (error) {
+      toast.error("Failed to delete log");
     }
   }
 
-  async function fetchStats() {
-
-    const { data } = await api.get("/logs/stats");
-
-    setStats(data);
+  async function handleDeleteAll() {
+    try {
+      await api.delete("/logs/all");
+      toast.success("All logs deleted successfully");
+      refreshDashboard();
+    } catch (error) {
+      toast.error("Failed to delete logs");
+    }
   }
 
   function handleSort(column: string) {
-
     if (column === sortBy) {
-
       setOrder(order === "asc" ? "desc" : "asc");
-
     } else {
-
       setSortBy(column);
-
       setOrder("asc");
-
     }
-
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-transparent">
+      <Navbar />
 
-      <Navbar onUploadClick={() => {}} />
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 p-6 text-white shadow-2xl shadow-slate-900/20">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="mb-3 inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200">
+                Live audit intelligence
+              </p>
+              <h2 className="text-3xl font-semibold sm:text-4xl">
+                Security operations dashboard
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
+                Review audit activity, investigate critical events, and stay ahead of unresolved issues with a focused operational view.
+              </p>
+            </div>
 
-      <div className="mx-auto max-w-7xl space-y-6 p-6">
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-300">Current snapshot</p>
+              <p className="mt-2 max-w-md text-sm font-medium text-slate-100">{summaryText}</p>
+            </div>
+          </div>
+        </section>
 
         <StatsCards stats={stats} />
 
-        <div className="rounded-xl bg-white p-5 shadow-sm">
-
-          <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:justify-between">
-
-            <div className="lg:w-1/2">
+        <div className="rounded-[24px] border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur">
+          <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="lg:w-[60%]">
               <SearchBar search={search} setSearch={setSearch} />
             </div>
-
-            <UploadLogs />
-
+            <UploadLogs onUploadSuccess={refreshDashboard} />
           </div>
 
-          <FilterPanel
-            filters={filters}
-            setFilters={setFilters}
-          />
-
+          <FilterPanel filters={filters} setFilters={setFilters} />
         </div>
 
         <LogTable
@@ -139,17 +152,12 @@ export default function Dashboard() {
           sortBy={sortBy}
           order={order}
           onSort={handleSort}
+          onDeleteOne={handleDeleteOne}
+          onDeleteAll={handleDeleteAll}
         />
 
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-        />
-
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
-
     </div>
   );
-
 }

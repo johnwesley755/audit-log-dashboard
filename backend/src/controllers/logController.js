@@ -17,16 +17,44 @@ const uploadLogs = async (req, res, next) => {
       });
     }
 
-    // Insert all logs at once
-    await AuditLog.insertMany(logs, {
+    const normalizedLogs = logs.map((log) => {
+      const uniqueKey = [
+        log.actor || "",
+        log.role || "",
+        log.action || "",
+        log.resource || "",
+        log.resourceType || "",
+        log.ipAddress || "",
+        log.region || "",
+        log.severity || "",
+        log.status || "",
+        log.timestamp || "",
+      ]
+        .join("|")
+        .trim();
+
+      return {
+        ...log,
+        uniqueKey,
+      };
+    });
+
+    const inserted = await AuditLog.insertMany(normalizedLogs, {
       ordered: false,
     });
 
     res.status(201).json({
       success: true,
-      message: `${logs.length} logs uploaded successfully.`,
+      message: `${inserted.length} logs uploaded successfully.`,
     });
   } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "One or more logs already exist and were skipped.",
+      });
+    }
+
     next(error);
   }
 };
@@ -96,6 +124,41 @@ const getLogs = async (req, res, next) => {
 |--------------------------------------------------------------------------
 | GET /api/logs/stats
 */
+const deleteLog = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const deleted = await AuditLog.findByIdAndDelete(id);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Log not found.",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Log deleted successfully.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteAllLogs = async (req, res, next) => {
+  try {
+    const result = await AuditLog.deleteMany({});
+
+    res.json({
+      success: true,
+      message: `${result.deletedCount} logs deleted successfully.`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getStats = async (req, res, next) => {
   try {
     const stats = await AuditLog.aggregate([
@@ -180,4 +243,6 @@ module.exports = {
   uploadLogs,
   getLogs,
   getStats,
+  deleteLog,
+  deleteAllLogs,
 };
